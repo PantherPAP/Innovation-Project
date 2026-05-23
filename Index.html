@@ -1,17 +1,19 @@
-</html><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wikipedia Article of the Day</title>
+    <title>Dashboard Widgets</title>
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #f4f5f7;
             color: #333;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            gap: 30px;
+            padding: 40px 20px;
             min-height: 100vh;
             margin: 0;
         }
@@ -21,7 +23,8 @@
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
             max-width: 600px;
-            width: 90%;
+            width: 100%;
+            box-sizing: border-box;
         }
         .date {
             font-size: 0.9rem;
@@ -30,10 +33,15 @@
             letter-spacing: 1px;
             margin-bottom: 5px;
         }
-        h1 {
+        h1, h2 {
             font-size: 2rem;
             margin: 0 0 15px 0;
             color: #111;
+        }
+        h2 {
+            font-size: 1.5rem;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
         }
         .thumbnail {
             width: 100%;
@@ -41,12 +49,13 @@
             object-fit: cover;
             border-radius: 8px;
             margin-bottom: 15px;
-            display: none; /* Hidden by default, shown if image exists */
+            display: none;
         }
         p {
             line-height: 1.6;
             color: #444;
             font-size: 1.1rem;
+            margin: 10px 0;
         }
         .btn {
             display: inline-block;
@@ -57,15 +66,66 @@
             text-decoration: none;
             border-radius: 6px;
             font-weight: bold;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
             transition: background 0.2s;
         }
         .btn:hover {
             background-color: #248;
         }
+        /* Sunset Widget Styling */
+        .sunset-box {
+            background: linear-gradient(135deg, #ff7e5f, #feb47b);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 15px;
+        }
+        .sunset-time {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 10px 0;
+            text-shadow: 1px 1px 4px rgba(0,0,0,0.2);
+        }
+        /* Math Widget Styling */
+        .math-container {
+            margin-top: 15px;
+        }
+        .question-box {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-left: 5px solid #36b;
+            border-radius: 4px;
+            font-weight: 500;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .math-input {
+            padding: 10px;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            flex: 1;
+        }
+        .feedback {
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        .correct { color: #2e7d32; }
+        .incorrect { color: #c62828; }
     </style>
 </head>
 <body>
 
+    <!-- 1. Original Wikipedia Widget -->
     <div class="card">
         <div class="date" id="current-date">Loading date...</div>
         <h1 id="article-title">Fetching today's article...</h1>
@@ -74,45 +134,65 @@
         <a id="article-link" class="btn" href="#" target="_blank" style="display: none;">Read Full Article</a>
     </div>
 
+    <!-- 2. Sunset Tracker Widget -->
+    <div class="card">
+        <h2>🌅 Local Sunset Tracker</h2>
+        <p>Real-time dusk tracking using GPS coordinates.</p>
+        <div id="sunset-widget-content">
+            <p id="sunset-status">Requesting location access...</p>
+        </div>
+        <button class="btn" onclick="getSunsetData()">Refresh Sunset</button>
+    </div>
+
+    <!-- 3. Ontario Grade 8 Math Review Widget -->
+    <div class="card">
+        <h2>📐 Grade 8 Math Review</h2>
+        <p>Practice questions aligned with the Ontario Mathematics Curriculum strands.</p>
+        <div class="math-container">
+            <div id="math-strand" class="date">Strand: Loading...</div>
+            <div id="math-question" class="question-box">Press the button to generate a problem.</div>
+            <div class="input-group">
+                <input type="number" id="math-answer" class="math-input" placeholder="Your numerical answer" step="any">
+                <button class="btn" style="margin-top:0;" onclick="checkMathAnswer()">Submit</button>
+            </div>
+            <div id="math-feedback" class="feedback"></div>
+            <button class="btn" onclick="generateMathQuestion()">Next Question</button>
+        </div>
+    </div>
+
     <script>
+        // ==========================================
+        // 1. WIKIPEDIA WIDGET LOGIC (Original)
+        // ==========================================
         async function fetchDailyArticle() {
             try {
-                // 1. Get today's date formatted as YYYY/MM/DD
                 const today = new Date();
                 const year = today.getFullYear();
                 const month = String(today.getMonth() + 1).padStart(2, '0');
                 const day = String(today.getDate()).padStart(2, '0');
-               
-                // Display the readable date on the UI
+
                 document.getElementById('current-date').innerText = today.toLocaleDateString('en-US', {
                     weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
                 });
 
-                // 2. Query Wikipedia's REST API for today's featured content
-                const apiUrl = `https://en.wikipedia.org/api/rest_v1/feed/featured/${year}/${month}/${day}`;
+                const apiUrl = `https://wikipedia.org{year}/${month}/${day}`;
                 const response = await fetch(apiUrl);
-               
                 if (!response.ok) throw new Error("Failed to fetch data from Wikipedia.");
                 const data = await response.json();
-
-                // 3. Extract the "tfa" (Today's Featured Article) object
                 const article = data.tfa;
 
-                // 4. Update the DOM elements with Wikipedia's data
                 document.getElementById('article-title').innerText = article.title;
                 document.getElementById('article-extract').innerText = article.extract;
-               
+
                 const linkElement = document.getElementById('article-link');
                 linkElement.href = article.content_urls.desktop.page;
                 linkElement.style.display = 'inline-block';
 
-                // 5. Handle image if available
                 if (article.thumbnail) {
                     const imgElement = document.getElementById('article-img');
                     imgElement.src = article.thumbnail.source;
                     imgElement.style.display = 'block';
                 }
-
             } catch (error) {
                 console.error("Error:", error);
                 document.getElementById('article-title').innerText = "Oops!";
@@ -120,8 +200,59 @@
             }
         }
 
-        // Run the function when the page loads
-        fetchDailyArticle();
-    </script>
-</body>
-</html>
+        // ==========================================
+        // 2. SUNSET WIDGET LOGIC
+        // ==========================================
+        function getSunsetData() {
+            const statusTxt = document.getElementById('sunset-status');
+            if (!navigator.geolocation) {
+                statusTxt.innerText = "Geolocation is not supported by your browser.";
+                return;
+            }
+
+            statusTxt.innerText = "Locating your position...";
+            navigator.geolocation.getCurrentPosition(async (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                try {
+                    const response = await fetch(`https://sunrise-sunset.org{lat}&lng=${lon}&formatted=0`);
+                    if (!response.ok) throw new Error();
+                    const data = await response.json();
+
+                    const sunsetUtc = new Date(data.results.sunset);
+                    const localizedSunset = sunsetUtc.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    document.getElementById('sunset-widget-content').innerHTML = `
+                        <div class="sunset-box">
+                            <p style="margin:0; text-transform:uppercase; font-size:0.85rem; letter-spacing:1px;">Tonight's Sunset</p>
+                            <div class="sunset-time">${localizedSunset}</div>
+                            <p style="margin:0; font-size:0.9rem; opacity:0.9;">Based on your coordinates: ${lat.toFixed(2)}°, ${lon.toFixed(2)}°</p>
+                        </div>
+                    `;
+                } catch (e) {
+                    statusTxt.innerText = "Error pulling sunset data. Try again.";
+                }
+            }, () => {
+                statusTxt.innerHTML = "Location denied. Showing fallback for Toronto, ON:<br><br>" + 
+                "<div class='sunset-box'><p style='margin:0;'>Toronto Sunset</p><div class='sunset-time'>8:45 PM</div></div>";
+            });
+        }
+
+        // ==========================================
+        // 3. GRADE 8 ONTARIO MATH WIDGET LOGIC
+        // ==========================================
+        let currentCorrectAnswer = null;
+
+        function generateMathQuestion() {
+            const feedback = document.getElementById('math-feedback');
+            const inputField = document.getElementById('math-answer');
+            feedback.innerText = "";
+            inputField.value = "";
+
+            const strands = [
+                { name: "B1. Number Sense (Percentages)", type: "percent" },
+                { name: "B2. Algebra (Solving Equations)", type: "algebra" },
+                { name: "E2. Geometry (Pythagorean Theorem)", type: "pythagoras" }
+            ];
+
